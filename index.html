@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title></title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--<link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">-->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+        crossorigin="anonymous">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/systemjs/0.20.9/system.js"></script>
+  <script>
+    System.config({
+      packages: {
+        "dist": {
+          "defaultExtension": "js",
+          "main": "app"
+        },
+        "rxjs": {
+          "defaultExtension": "js",
+          "main": "bundles/Rx.umd.js"
+        },
+        "jquery": {
+          "defaultExtension": "js"
+        }
+      },
+      map: {
+        "rxjs": "https://npmcdn.com/rxjs@5.1.0",
+        "jquery": "https://npmcdn.com/jquery@3.1.1"
+      }
+    });
+    System
+      .import('dist')
+      .then(null, console.error.bind(console));
+  </script>
+</head>
+
+<body>
+  <div>
+    <button class="animal-btn btn btn-primary">Lion</button>
+    <button class="animal-btn btn btn-primary">Tiger</button>
+    <button class="animal-btn btn btn-primary">Cat</button>
+  </div>
+</body>
+
+</html>

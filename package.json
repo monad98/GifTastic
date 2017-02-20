@@ -1,0 +1,22 @@
+{
+  "name": "gif-tastic",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "http-server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/jquery": "^2.0.40",
+    "bootstrap": "^3.3.7",
+    "jquery": "^3.1.1",
+    "rxjs": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/core-js": "^0.9.35",
+    "http-server": "^0.9.0"
+  }
+}
