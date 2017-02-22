@@ -17,6 +17,8 @@ require("rxjs/add/operator/filter");
 require("rxjs/add/operator/debounceTime");
 require("rxjs/add/operator/distinctUntilChanged");
 require("rxjs/add/operator/do");
+require("rxjs/add/operator/scan");
+require("rxjs/add/operator/share");
 $(document).ready(function () {
     var API_KEY = "dc6zaTOxFJmzC";
     var URL = "http://api.giphy.com/v1/gifs/search?";
@@ -38,14 +40,6 @@ $(document).ready(function () {
         })
             .map(function (ajaxRes) { return ajaxRes.response.data; });
     });
-    var pokemonInput$ = Observable_1.Observable.fromEvent($pokemonInput, "keyup")
-        .map(function (ev) { return $(ev.target).val(); })
-        .filter(function (text) {
-        return text.length >= 3;
-    })
-        .debounceTime(300)
-        .distinctUntilChanged()
-        .switchMap(function (text) { return Observable_1.Observable.of(text); });
     var addPokemonClick$ = Observable_1.Observable.fromEvent($addPokemonBtn, "click")
         .map(function () { return $pokemonInput.val(); })
         .filter(function (pokemonName) { return pokemonName.length > 2; })
@@ -70,14 +64,45 @@ $(document).ready(function () {
         .subscribe(function (pokemon) {
         $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox);
     });
+    var pokemonInput$ = Observable_1.Observable.fromEvent($pokemonInput, "keyup")
+        .map(function (ev) { return $(ev.target).val(); })
+        .debounceTime(300)
+        .share();
     pokemonInput$
         .subscribe(function (inputText) {
-        $dataList.empty();
-        pokemon_1.default.forEach(function (pokemonName) {
-            if (new RegExp("^" + inputText, "i").test(pokemonName)) {
-                $dataList.append($("<option>").attr("value", pokemonName));
-            }
-        });
+        if (inputText.length < 3 && $dataList.children().length)
+            $dataList.empty();
+    });
+    var autoComplete$ = pokemonInput$
+        .distinctUntilChanged()
+        .filter(function (inputText) { return inputText.length >= 3; })
+        .scan(function (acc, inputText) {
+        if (acc.previousInput.length > 3 && inputText.startsWith(acc.previousInput)) {
+            var previousInput = inputText;
+            var pokemons = acc.pokemons.filter(function (pokemonName) { return new RegExp("^" + inputText, "i").test(pokemonName); });
+            var changeType = "increase";
+            return { pokemons: pokemons, previousInput: previousInput, changeType: changeType };
+        }
+        else {
+            var previousInput = inputText;
+            var pokemons = pokemon_1.default.filter(function (pokemonName) { return new RegExp("^" + inputText, "i").test(pokemonName); });
+            var changeType = "new";
+            return { pokemons: pokemons, previousInput: previousInput, changeType: changeType };
+        }
+    }, { pokemons: pokemon_1.default, previousInput: "", changeType: "new" });
+    autoComplete$
+        .subscribe(function (_a) {
+        var pokemons = _a.pokemons, changeType = _a.changeType;
+        if (changeType === "increase") {
+            $dataList.children().each(function (idx, elem) {
+                if (!pokemons.includes($(elem).attr("value")))
+                    $(elem).remove();
+            });
+        }
+        else {
+            $dataList.empty();
+            pokemons.forEach(function (pokemonName) { return $dataList.append($("<option>").attr("value", pokemonName)); });
+        }
     });
     pokemonBtnClick$
         .subscribe(function (gifs) {

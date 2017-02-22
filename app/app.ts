@@ -16,6 +16,8 @@ import "rxjs/add/operator/filter";
 import "rxjs/add/operator/debounceTime";
 import "rxjs/add/operator/distinctUntilChanged";
 import "rxjs/add/operator/do";
+import "rxjs/add/operator/scan";
+import "rxjs/add/operator/share";
 
 interface Handler {
   (eventObject: JQueryEventObject, ...args: any[]): any;
@@ -47,30 +49,22 @@ $(document).ready(() => {
   /**
    * Observables
    */
-  //Pokemon button click stream
+    //Pokemon button click stream
   const pokemonBtnClick$ =
-    Observable
-      .fromEventPattern((handler: Handler) => $buttonsBox.on("click", ".pokemon-btn", handler))
-      .map((ev: Event) => $(ev.target).text())
-      .switchMap((text: string) =>
-        Observable
-          .ajax({
-            url: URL + $.param({"q": text, "api_key": API_KEY, "limit": 10}),
-            method: "GET"
-          })
-          .map(ajaxRes => ajaxRes.response.data)
-      );
+      Observable
+        .fromEventPattern((handler: Handler) => $buttonsBox.on("click", ".pokemon-btn", handler))
+        .map((ev: Event) => $(ev.target).text())
+        .switchMap((text: string) =>
+          Observable
+            .ajax({
+              url: URL + $.param({"q": text, "api_key": API_KEY, "limit": 10}),
+              method: "GET"
+            })
+            .map(ajaxRes => ajaxRes.response.data)
+        );
 
   //pokemon add input stream for autocomplete
-  const pokemonInput$ =
-    Observable.fromEvent($pokemonInput, "keyup")
-      .map((ev: Event) => $(ev.target).val())
-      .filter((text: string) => {
-        return text.length >= 3
-      }) // only 3 characters or more
-      .debounceTime(300) // delay auto completion of user input by 500ms
-      .distinctUntilChanged() // only when the input text changed
-      .switchMap(text => Observable.of(text));
+
 
 
   //Add-Pokemon button click stream
@@ -115,15 +109,54 @@ $(document).ready(() => {
       $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox)
     });
 
-  //subscribe pokemonInput stream
+
+
+  const pokemonInput$ =
+    Observable.fromEvent($pokemonInput, "keyup")
+      .map((ev: Event) => $(ev.target).val())
+      .debounceTime(300) // delay auto completion of user input by 500ms
+      .share();
+
   pokemonInput$
-    .subscribe((inputText: string) => {
-      $dataList.empty(); // TODO: when inputText.length > 2, use filter;
-      topics.forEach(pokemonName => {
-        if(new RegExp("^" + inputText, "i").test(pokemonName)) {
-          $dataList.append($("<option>").attr("value", pokemonName));
+    .subscribe(inputText => {
+      if(inputText.length < 3 && $dataList.children().length) $dataList.empty();
+    });
+
+
+  const autoComplete$ =
+    pokemonInput$
+      .distinctUntilChanged() // only when the input text changed
+      .filter(inputText => inputText.length >= 3)
+      .scan((acc, inputText) => {
+        // if user has already typed more than or equal to 3 characters, filtering is needed.
+        if(acc.previousInput.length > 3 && inputText.startsWith(acc.previousInput)) { // We already have filtered pokemons because currentInput = previousInput + SOME_TEXT
+          const previousInput = inputText;
+          const pokemons = acc.pokemons.filter((pokemonName: string) => new RegExp("^" + inputText, "i").test(pokemonName));
+          const changeType = "increase";
+          return {pokemons, previousInput, changeType};
+        } else { //maybe this is a new pokemon or user deleted text and typed same text
+          const previousInput = inputText;
+          const pokemons = topics.filter((pokemonName: string) => new RegExp("^" + inputText, "i").test(pokemonName));
+          const changeType = "new";
+          return {pokemons, previousInput, changeType};
         }
-      })
+      }, {pokemons: topics, previousInput: "", changeType: "new"});
+
+  //subscribe pokemonInput stream
+  autoComplete$
+    .subscribe(({pokemons, changeType}) => {
+      // user added characters to previous input text
+      if(changeType === "increase") {
+        $dataList.children().each(function (idx: number, elem: Element) {
+          // remove if this pokemon name is not matched anymore
+          if(!pokemons.includes($(elem).attr("value"))) $(elem).remove();
+        });
+      }
+      //user deleted characters from previous input text or totally different input text!
+      else {
+        $dataList.empty();
+        pokemons.forEach((pokemonName: string) => $dataList.append($("<option>").attr("value", pokemonName)));
+      }
     });
 
   //subscribe pokemon button click stream
