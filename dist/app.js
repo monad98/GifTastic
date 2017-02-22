@@ -22,7 +22,7 @@ $(document).ready(function () {
     var URL = "http://api.giphy.com/v1/gifs/search?";
     var randomIndex = pokemon_1.default.length - 20 > 0 ? Math.floor(Math.random() * (pokemon_1.default.length - 20)) : 0;
     var selectedPokemons = pokemon_1.default.splice(randomIndex, 20);
-    var $buttonsBox = $("div#buttons");
+    var $buttonsBox = $("#buttons");
     var $images = $("div#images");
     var $pokemonInput = $("input#pokemon-input");
     var $addPokemonBtn = $("button#add-pokemon");
@@ -43,13 +43,14 @@ $(document).ready(function () {
         .filter(function (text) {
         return text.length >= 3;
     })
-        .debounceTime(500)
+        .debounceTime(300)
         .distinctUntilChanged()
         .switchMap(function (text) { return Observable_1.Observable.of(text); });
-    var addPokemonClick$ = Observable_1.Observable.fromEvent($addPokemonBtn, "submit")
+    var addPokemonClick$ = Observable_1.Observable.fromEvent($addPokemonBtn, "click")
         .map(function () { return $pokemonInput.val(); })
-        .filter(function (pokemonName) { return pokemonName.length > 0; })
+        .filter(function (pokemonName) { return pokemonName.length > 2; })
         .do(function (pokemonName) {
+        $pokemonInput.val("");
         pokemonName = pokemonName[0].toUpperCase() + pokemonName.toLowerCase().substring(1);
         var index = pokemon_1.default.indexOf(pokemonName);
         selectedPokemons.push(pokemonName);
@@ -60,14 +61,18 @@ $(document).ready(function () {
     var pokemons$ = Observable_1.Observable.from(selectedPokemons)
         .concat(addPokemonClick$);
     var pokemonGifClick$ = Observable_1.Observable
-        .fromEventPattern(function (handler) { return $images.on("click", ".pokemon-gif", handler); })
-        .map(function (ev) { return ({ isAnimating: $(ev.target).data("animating"), imgElem: ev.target }); });
+        .fromEventPattern(function (handler) { return $images.on("click", ".pokemon-box", handler); })
+        .map(function (ev) { return ({
+        isAnimating: $(ev.target).closest(".pokemon-box").find(".pokemon-gif").data("animating"),
+        imgElem: $(ev.target).closest(".pokemon-box").find(".pokemon-gif")
+    }); });
     pokemons$
-        .subscribe(function (pokemon) { return $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox); });
+        .subscribe(function (pokemon) {
+        $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox);
+    });
     pokemonInput$
         .subscribe(function (inputText) {
-        console.log(inputText);
-        $dataList.remove("option");
+        $dataList.empty();
         pokemon_1.default.forEach(function (pokemonName) {
             if (new RegExp("^" + inputText, "i").test(pokemonName)) {
                 $dataList.append($("<option>").attr("value", pokemonName));

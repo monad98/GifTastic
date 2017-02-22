@@ -39,7 +39,7 @@ $(document).ready(() => {
   const randomIndex = topics.length - 20 > 0 ? Math.floor(Math.random() * (topics.length - 20)) : 0;
   const selectedPokemons = topics.splice(randomIndex, 20); // select 20 random pokemons
 
-  const $buttonsBox = $("div#buttons");
+  const $buttonsBox = $("#buttons");
   const $images = $("div#images");
   const $pokemonInput = $("input#pokemon-input");
   const $addPokemonBtn = $("button#add-pokemon");
@@ -68,22 +68,25 @@ $(document).ready(() => {
       .filter((text: string) => {
         return text.length >= 3
       }) // only 3 characters or more
-      .debounceTime(500) // delay auto completion of user input by 500ms
+      .debounceTime(300) // delay auto completion of user input by 500ms
       .distinctUntilChanged() // only when the input text changed
       .switchMap(text => Observable.of(text));
 
 
   //Add-Pokemon button click stream
   const addPokemonClick$ =
-    Observable.fromEvent($addPokemonBtn, "submit")
+    Observable.fromEvent($addPokemonBtn, "click")
       .map(() => $pokemonInput.val())
-      .filter((pokemonName: string) => pokemonName.length > 0)
+      .filter((pokemonName: string) => pokemonName.length > 2) // shortest name: "Muk"...
       .do(pokemonName => { //side effect to manipulate selectedPokemons array and topics array
+        $pokemonInput.val("");
         pokemonName = pokemonName[0].toUpperCase() + pokemonName.toLowerCase().substring(1);
         const index = topics.indexOf(pokemonName);
+        // We don't need update selectedPokemons array, it's just homework requirement
         selectedPokemons.push(pokemonName);
         //if pokemonName exists in topics array, add this name to selected pokemons and delete from topics array
         if(index > -1) {
+          // We need to update topics array for auto completion feature
           topics.splice(index, 1);
         }
       });
@@ -96,8 +99,11 @@ $(document).ready(() => {
   //Pokemon gif click stream
   const pokemonGifClick$ =
     Observable
-      .fromEventPattern((handler: Handler) => $images.on("click", ".pokemon-gif", handler))
-      .map((ev: Event) => ({isAnimating: $(ev.target).data("animating"), imgElem: ev.target}));
+      .fromEventPattern((handler: Handler) => $images.on("click", ".pokemon-box", handler))
+      .map((ev: Event) => ({ // Due to rating ribbon, listen click event of parent div and find img element
+        isAnimating: $(ev.target).closest(".pokemon-box").find(".pokemon-gif").data("animating"),
+        imgElem: $(ev.target).closest(".pokemon-box").find(".pokemon-gif")
+      }));
 
 
   /**
@@ -105,13 +111,14 @@ $(document).ready(() => {
    */
   //subscribe selectedPokemons stream
   pokemons$
-    .subscribe(pokemon => $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox));
+    .subscribe(pokemon => {
+      $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox)
+    });
 
   //subscribe pokemonInput stream
   pokemonInput$
     .subscribe((inputText: string) => {
-    console.log(inputText);
-      $dataList.remove("option");
+      $dataList.empty(); // TODO: when inputText.length > 2, use filter;
       topics.forEach(pokemonName => {
         if(new RegExp("^" + inputText, "i").test(pokemonName)) {
           $dataList.append($("<option>").attr("value", pokemonName));

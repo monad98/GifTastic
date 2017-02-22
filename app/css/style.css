@@ -41,3 +41,6 @@
 .ribbon.danger{background: #d9534f;}
 .ribbon.warning{background: #f0ad4e;}
 
+#images .pokemon-box {
+	cursor: pointer;
+}
