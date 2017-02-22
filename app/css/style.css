@@ -1,0 +1,43 @@
+.btn-space {
+	margin: 0 5px 5px 0;
+}
+
+#images {
+	display: flex;
+	justify-content: space-around;
+	flex-wrap: wrap;
+}
+.pokemon-box {
+	margin: 5px;
+	position: relative;
+}
+.ribbon-wrapper {
+	width: 150px;
+	height: 150px;
+	overflow: hidden;
+	position: absolute;
+	top: -2px;
+	left: -2px;
+}
+/*source: https://codepen.io/eode9/pen/twkKm*/
+.ribbon{
+	width: 150px;
+	background: #e43;
+	position: absolute;
+	top: 25px;
+	left: -30px;
+	text-align: center;
+	line-height: 30px;
+	letter-spacing: 1px;
+	color: #f0f0f0;
+	transform: rotate(-45deg);
+	-webkit-transform: rotate(-45deg);
+	box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.34);
+	/*box-shadow: 0 0 3px rgba(0,0,0,.3);*/
+	overflow: hidden
+}
+.ribbon.success{background: #5cb85c;}
+.ribbon.primary{background: #337ab7;}
+.ribbon.danger{background: #d9534f;}
+.ribbon.warning{background: #f0ad4e;}
+

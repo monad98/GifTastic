@@ -1,27 +1,188 @@
-import {Observable} from "rxjs/Observable";
 import * as $ from "jquery";
-
+import topics from "./pokemon"
+import {Observable} from "rxjs/Observable";
 import "rxjs/add/observable/fromEventPattern";
 import "rxjs/add/observable/fromEvent";
+import "rxjs/add/observable/from";
+import "rxjs/add/observable/dom/ajax";
+import "rxjs/add/observable/of";
 import "rxjs/add/operator/map";
+import "rxjs/add/operator/switch";
+import "rxjs/add/operator/switchMap";
+import "rxjs/add/operator/catch";
+import "rxjs/add/operator/startWith";
+import "rxjs/add/operator/concat";
+import "rxjs/add/operator/filter";
+import "rxjs/add/operator/debounceTime";
+import "rxjs/add/operator/distinctUntilChanged";
+import "rxjs/add/operator/do";
 
 interface Handler {
-  (eventObject: JQueryEventObject, ...args: any[]):any;
+  (eventObject: JQueryEventObject, ...args: any[]): any;
+}
+interface Gif {
+  rating: string;
+  images: {
+    fixed_height: {
+      url: string
+    },
+    fixed_height_still: {
+      url: string
+    }
+  }
 }
 
 $(document).ready(() => {
+  const API_KEY = "dc6zaTOxFJmzC";
+  const URL = "http://api.giphy.com/v1/gifs/search?";
 
-  const btnClick = Observable.fromEventPattern((handler: Handler) => $("body").on("click", ".animal-btn", handler));
-  const addAnimal
-    = Observable
-    .fromEvent($("#add-animal"), "click")
-    .map(() => $("input#animal-input").val());
+  const randomIndex = topics.length - 20 > 0 ? Math.floor(Math.random() * (topics.length - 20)) : 0;
+  const selectedPokemons = topics.splice(randomIndex, 20); // select 20 random pokemons
+
+  const $buttonsBox = $("div#buttons");
+  const $images = $("div#images");
+  const $pokemonInput = $("input#pokemon-input");
+  const $addPokemonBtn = $("button#add-pokemon");
+  const $dataList = $("datalist#pokemon-list");
+  /**
+   * Observables
+   */
+  //Pokemon button click stream
+  const pokemonBtnClick$ =
+    Observable
+      .fromEventPattern((handler: Handler) => $buttonsBox.on("click", ".pokemon-btn", handler))
+      .map((ev: Event) => $(ev.target).text())
+      .switchMap((text: string) =>
+        Observable
+          .ajax({
+            url: URL + $.param({"q": text, "api_key": API_KEY, "limit": 10}),
+            method: "GET"
+          })
+          .map(ajaxRes => ajaxRes.response.data)
+      );
+
+  //pokemon add input stream for autocomplete
+  const pokemonInput$ =
+    Observable.fromEvent($pokemonInput, "keyup")
+      .map((ev: Event) => $(ev.target).val())
+      .filter((text: string) => {
+        return text.length >= 3
+      }) // only 3 characters or more
+      .debounceTime(500) // delay auto completion of user input by 500ms
+      .distinctUntilChanged() // only when the input text changed
+      .switchMap(text => Observable.of(text));
 
 
-  btnClick.subscribe(() => {
-    console.log("clicked!");
-  })
+  //Add-Pokemon button click stream
+  const addPokemonClick$ =
+    Observable.fromEvent($addPokemonBtn, "submit")
+      .map(() => $pokemonInput.val())
+      .filter((pokemonName: string) => pokemonName.length > 0)
+      .do(pokemonName => { //side effect to manipulate selectedPokemons array and topics array
+        pokemonName = pokemonName[0].toUpperCase() + pokemonName.toLowerCase().substring(1);
+        const index = topics.indexOf(pokemonName);
+        selectedPokemons.push(pokemonName);
+        //if pokemonName exists in topics array, add this name to selected pokemons and delete from topics array
+        if(index > -1) {
+          topics.splice(index, 1);
+        }
+      });
 
+  //Pokemons stream
+  const pokemons$ =
+    Observable.from(selectedPokemons)
+      .concat(addPokemonClick$);
+
+  //Pokemon gif click stream
+  const pokemonGifClick$ =
+    Observable
+      .fromEventPattern((handler: Handler) => $images.on("click", ".pokemon-gif", handler))
+      .map((ev: Event) => ({isAnimating: $(ev.target).data("animating"), imgElem: ev.target}));
+
+
+  /**
+   * Subscribe stream
+   */
+  //subscribe selectedPokemons stream
+  pokemons$
+    .subscribe(pokemon => $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox));
+
+  //subscribe pokemonInput stream
+  pokemonInput$
+    .subscribe((inputText: string) => {
+    console.log(inputText);
+      $dataList.remove("option");
+      topics.forEach(pokemonName => {
+        if(new RegExp("^" + inputText, "i").test(pokemonName)) {
+          $dataList.append($("<option>").attr("value", pokemonName));
+        }
+      })
+    });
+
+  //subscribe pokemon button click stream
+  pokemonBtnClick$
+    .subscribe((gifs: Gif[]) => {
+      //remove existing gifs
+      $(".pokemon-box").remove();
+
+      gifs.forEach(gif => {
+
+        //set rating ribbon color
+        let ribbonColor: string;
+        switch (gif.rating) {
+          case "y":
+          case "g":
+            ribbonColor = "primary";
+            break;
+          case "pg":
+            ribbonColor = "success";
+            break;
+          case "pg-13":
+            ribbonColor = "warning";
+            break;
+          case "r":
+            ribbonColor = "danger";
+            break;
+        }
+        $images
+          .append(
+            // create rating ribbon element and <img> element => append to div.pokemon-box ==> append to div#images
+            //<div class="pokemon-box">
+            //  <div class="ribbon-wrapper"><div class="ribbon"></div></div>
+            //  <img class="pokemon-gif">
+            //</div>
+            $("<div>")
+              .addClass("pokemon-box")
+              .append(
+                $("<div>").addClass("ribbon-wrapper")
+                  .append(
+                    $("<div>").addClass("ribbon")
+                      .addClass(ribbonColor)
+                      .text("Rating: " + gif.rating)
+                  )
+              )
+              .append(
+                $("<img>").addClass("pokemon-gif")
+                  .attr("src", gif.images.fixed_height_still.url)
+                  .data("animating", false)
+                  .data("url", {animating: gif.images.fixed_height.url, still: gif.images.fixed_height_still.url})
+              )
+          );
+      });
+    });
+
+  //subscribe pokemon gif image click
+  pokemonGifClick$
+    .subscribe(obj => {
+      if(obj.isAnimating) {
+        $(obj.imgElem).attr("src", $(obj.imgElem).data("url").still);
+        $(obj.imgElem).data("animating", false)
+      }
+      else {
+        $(obj.imgElem).attr("src", $(obj.imgElem).data("url").animating);
+        $(obj.imgElem).data("animating", true)
+      }
+    })
 
 
 });
