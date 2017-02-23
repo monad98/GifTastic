@@ -41,11 +41,15 @@ $(document).ready(() => {
   const randomIndex = topics.length - 20 > 0 ? Math.floor(Math.random() * (topics.length - 20)) : 0;
   const selectedPokemons = topics.splice(randomIndex, 20); // select 20 random pokemons
 
+  /**
+   * jQuery object (prepended $ in front of each variable name)
+   */
   const $buttonsBox = $("#buttons");
   const $images = $("div#images");
   const $pokemonInput = $("input#pokemon-input");
   const $addPokemonBtn = $("button#add-pokemon");
   const $dataList = $("datalist#pokemon-list");
+
   /**
    * Observables
    */
@@ -63,8 +67,33 @@ $(document).ready(() => {
             .map(ajaxRes => ajaxRes.response.data)
         );
 
-  //pokemon add input stream for autocomplete
+  //use input stream for remove children of datalist element
+  const pokemonInput$ =
+    Observable.fromEvent($pokemonInput, "keyup")
+      .map((ev: Event) => $(ev.target).val())
+      .debounceTime(300) // delay auto completion of user input by 500ms
+      .distinctUntilChanged() // only when the input text changed
+      .share();
 
+
+  //pokemon add input stream for autocomplete
+  const autoComplete$ =
+    pokemonInput$
+      .filter(inputText => inputText.length >= 3)
+      .scan((acc, inputText) => {
+        // if user has already typed more than or equal to 3 characters, filtering is needed.
+        if(acc.previousInput.length > 3 && inputText.startsWith(acc.previousInput)) { // We already have filtered pokemons because currentInput = previousInput + SOME_TEXT
+          const previousInput = inputText;
+          const pokemons = acc.pokemons.filter((pokemonName: string) => new RegExp("^" + inputText, "i").test(pokemonName));
+          const changeType = "increase";
+          return {pokemons, previousInput, changeType};
+        } else { // This is a new pokemon or user deleted text and typed same text
+          const previousInput = inputText;
+          const pokemons = topics.filter((pokemonName: string) => new RegExp("^" + inputText, "i").test(pokemonName));
+          const changeType = "new";
+          return {pokemons, previousInput, changeType};
+        }
+      }, {pokemons: topics, previousInput: "", changeType: "new"});
 
 
   //Add-Pokemon button click stream
@@ -100,6 +129,7 @@ $(document).ready(() => {
       }));
 
 
+
   /**
    * Subscribe stream
    */
@@ -110,37 +140,13 @@ $(document).ready(() => {
     });
 
 
-
-  const pokemonInput$ =
-    Observable.fromEvent($pokemonInput, "keyup")
-      .map((ev: Event) => $(ev.target).val())
-      .debounceTime(300) // delay auto completion of user input by 500ms
-      .share();
-
+  //subscribe user input stream to update view
   pokemonInput$
     .subscribe(inputText => {
       if(inputText.length < 3 && $dataList.children().length) $dataList.empty();
     });
 
 
-  const autoComplete$ =
-    pokemonInput$
-      .distinctUntilChanged() // only when the input text changed
-      .filter(inputText => inputText.length >= 3)
-      .scan((acc, inputText) => {
-        // if user has already typed more than or equal to 3 characters, filtering is needed.
-        if(acc.previousInput.length > 3 && inputText.startsWith(acc.previousInput)) { // We already have filtered pokemons because currentInput = previousInput + SOME_TEXT
-          const previousInput = inputText;
-          const pokemons = acc.pokemons.filter((pokemonName: string) => new RegExp("^" + inputText, "i").test(pokemonName));
-          const changeType = "increase";
-          return {pokemons, previousInput, changeType};
-        } else { //maybe this is a new pokemon or user deleted text and typed same text
-          const previousInput = inputText;
-          const pokemons = topics.filter((pokemonName: string) => new RegExp("^" + inputText, "i").test(pokemonName));
-          const changeType = "new";
-          return {pokemons, previousInput, changeType};
-        }
-      }, {pokemons: topics, previousInput: "", changeType: "new"});
 
   //subscribe pokemonInput stream
   autoComplete$
@@ -159,11 +165,19 @@ $(document).ready(() => {
       }
     });
 
+
   //subscribe pokemon button click stream
   pokemonBtnClick$
     .subscribe((gifs: Gif[]) => {
       //remove existing gifs
-      $(".pokemon-box").remove();
+      $images.empty();
+
+
+      //if there is no gif image found
+      if(!gifs.length) {
+        $images.append($("<h2>").text("This Pokemon is one of the most UNPOPULAR Pokemons! No Gif image found!"))
+      }
+
 
       gifs.forEach(gif => {
 
@@ -186,11 +200,13 @@ $(document).ready(() => {
         }
         $images
           .append(
-            // create rating ribbon element and <img> element => append to div.pokemon-box ==> append to div#images
-            //<div class="pokemon-box">
-            //  <div class="ribbon-wrapper"><div class="ribbon"></div></div>
-            //  <img class="pokemon-gif">
-            //</div>
+            /** create rating ribbon element and <img> element => append to div.pokemon-box ==> append to div#images
+
+             <div class="pokemon-box">
+             <div class="ribbon-wrapper"><div class="ribbon"></div></div>
+             <img class="pokemon-gif">
+             </div>
+             */
             $("<div>")
               .addClass("pokemon-box")
               .append(

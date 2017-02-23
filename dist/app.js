@@ -40,6 +40,27 @@ $(document).ready(function () {
         })
             .map(function (ajaxRes) { return ajaxRes.response.data; });
     });
+    var pokemonInput$ = Observable_1.Observable.fromEvent($pokemonInput, "keyup")
+        .map(function (ev) { return $(ev.target).val(); })
+        .debounceTime(300)
+        .distinctUntilChanged()
+        .share();
+    var autoComplete$ = pokemonInput$
+        .filter(function (inputText) { return inputText.length >= 3; })
+        .scan(function (acc, inputText) {
+        if (acc.previousInput.length > 3 && inputText.startsWith(acc.previousInput)) {
+            var previousInput = inputText;
+            var pokemons = acc.pokemons.filter(function (pokemonName) { return new RegExp("^" + inputText, "i").test(pokemonName); });
+            var changeType = "increase";
+            return { pokemons: pokemons, previousInput: previousInput, changeType: changeType };
+        }
+        else {
+            var previousInput = inputText;
+            var pokemons = pokemon_1.default.filter(function (pokemonName) { return new RegExp("^" + inputText, "i").test(pokemonName); });
+            var changeType = "new";
+            return { pokemons: pokemons, previousInput: previousInput, changeType: changeType };
+        }
+    }, { pokemons: pokemon_1.default, previousInput: "", changeType: "new" });
     var addPokemonClick$ = Observable_1.Observable.fromEvent($addPokemonBtn, "click")
         .map(function () { return $pokemonInput.val(); })
         .filter(function (pokemonName) { return pokemonName.length > 2; })
@@ -64,32 +85,11 @@ $(document).ready(function () {
         .subscribe(function (pokemon) {
         $("<button>").addClass("pokemon-btn btn btn-primary btn-space").text(pokemon).appendTo($buttonsBox);
     });
-    var pokemonInput$ = Observable_1.Observable.fromEvent($pokemonInput, "keyup")
-        .map(function (ev) { return $(ev.target).val(); })
-        .debounceTime(300)
-        .share();
     pokemonInput$
         .subscribe(function (inputText) {
         if (inputText.length < 3 && $dataList.children().length)
             $dataList.empty();
     });
-    var autoComplete$ = pokemonInput$
-        .distinctUntilChanged()
-        .filter(function (inputText) { return inputText.length >= 3; })
-        .scan(function (acc, inputText) {
-        if (acc.previousInput.length > 3 && inputText.startsWith(acc.previousInput)) {
-            var previousInput = inputText;
-            var pokemons = acc.pokemons.filter(function (pokemonName) { return new RegExp("^" + inputText, "i").test(pokemonName); });
-            var changeType = "increase";
-            return { pokemons: pokemons, previousInput: previousInput, changeType: changeType };
-        }
-        else {
-            var previousInput = inputText;
-            var pokemons = pokemon_1.default.filter(function (pokemonName) { return new RegExp("^" + inputText, "i").test(pokemonName); });
-            var changeType = "new";
-            return { pokemons: pokemons, previousInput: previousInput, changeType: changeType };
-        }
-    }, { pokemons: pokemon_1.default, previousInput: "", changeType: "new" });
     autoComplete$
         .subscribe(function (_a) {
         var pokemons = _a.pokemons, changeType = _a.changeType;
@@ -106,7 +106,10 @@ $(document).ready(function () {
     });
     pokemonBtnClick$
         .subscribe(function (gifs) {
-        $(".pokemon-box").remove();
+        $images.empty();
+        if (!gifs.length) {
+            $images.append($("<h2>").text("This Pokemon is one of the most UNPOPULAR Pokemons! No Gif image found!"));
+        }
         gifs.forEach(function (gif) {
             var ribbonColor;
             switch (gif.rating) {

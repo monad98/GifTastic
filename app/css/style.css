@@ -1,7 +1,9 @@
 .btn-space {
 	margin: 0 5px 5px 0;
 }
-
+#buttons, #addForm {
+	margin-bottom: 20px;
+}
 #images {
 	display: flex;
 	justify-content: space-around;
