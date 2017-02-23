@@ -22,13 +22,12 @@ require("rxjs/add/operator/share");
 $(document).ready(function () {
     var API_KEY = "dc6zaTOxFJmzC";
     var URL = "https://api.giphy.com/v1/gifs/search?";
-    var randomIndex = pokemon_1.default.length - 20 > 0 ? Math.floor(Math.random() * (pokemon_1.default.length - 20)) : 0;
-    var selectedPokemons = pokemon_1.default.splice(randomIndex, 20);
     var $buttonsBox = $("#buttons");
     var $images = $("div#images");
     var $pokemonInput = $("input#pokemon-input");
     var $addPokemonBtn = $("button#add-pokemon");
     var $dataList = $("datalist#pokemon-list");
+    var $refreshBtn = $("button#refresh-btn");
     var pokemonBtnClick$ = Observable_1.Observable
         .fromEventPattern(function (handler) { return $buttonsBox.on("click", ".pokemon-btn", handler); })
         .map(function (ev) { return $(ev.target).text(); })
@@ -68,13 +67,23 @@ $(document).ready(function () {
         $pokemonInput.val("");
         pokemonName = pokemonName[0].toUpperCase() + pokemonName.toLowerCase().substring(1);
         var index = pokemon_1.default.indexOf(pokemonName);
-        selectedPokemons.push(pokemonName);
-        if (index > -1) {
-            pokemon_1.default.splice(index, 1);
-        }
+        if (index < 0)
+            alert("You just added unknown Pokemon.");
     });
-    var pokemons$ = Observable_1.Observable.from(selectedPokemons)
-        .concat(addPokemonClick$);
+    var refresh$ = Observable_1.Observable
+        .fromEvent($refreshBtn, "click")
+        .do(function () { return $buttonsBox.empty(); })
+        .startWith(null);
+    var randomPickedPokemons$ = Observable_1.Observable
+        .of(pokemon_1.default)
+        .switchMap(function (pokemons) {
+        var randomIndex = pokemon_1.default.length - 20 > 0 ? Math.floor(Math.random() * (pokemon_1.default.length - 20)) : 0;
+        return Observable_1.Observable.from(pokemons.slice(randomIndex, randomIndex + 20));
+    });
+    var pokemons$ = refresh$
+        .switchMap(function () {
+        return randomPickedPokemons$.concat(addPokemonClick$);
+    });
     var pokemonGifClick$ = Observable_1.Observable
         .fromEventPattern(function (handler) { return $images.on("click", ".pokemon-box", handler); })
         .map(function (ev) { return ({
@@ -109,6 +118,7 @@ $(document).ready(function () {
         $images.empty();
         if (!gifs.length) {
             $images.append($("<h2>").text("This Pokemon is one of the most UNPOPULAR Pokemons! No Gif image found!"));
+            return;
         }
         gifs.forEach(function (gif) {
             var ribbonColor;

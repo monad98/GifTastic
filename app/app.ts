@@ -18,28 +18,12 @@ import "rxjs/add/operator/distinctUntilChanged";
 import "rxjs/add/operator/do";
 import "rxjs/add/operator/scan";
 import "rxjs/add/operator/share";
-
-interface Handler {
-  (eventObject: JQueryEventObject, ...args: any[]): any;
-}
-interface Gif {
-  rating: string;
-  images: {
-    fixed_height: {
-      url: string
-    },
-    fixed_height_still: {
-      url: string
-    }
-  }
-}
+import {Handler, Gif} from "./interface";
 
 $(document).ready(() => {
   const API_KEY = "dc6zaTOxFJmzC";
   const URL = "https://api.giphy.com/v1/gifs/search?";
 
-  const randomIndex = topics.length - 20 > 0 ? Math.floor(Math.random() * (topics.length - 20)) : 0;
-  const selectedPokemons = topics.splice(randomIndex, 20); // select 20 random pokemons
 
   /**
    * jQuery object (prepended $ in front of each variable name)
@@ -49,6 +33,7 @@ $(document).ready(() => {
   const $pokemonInput = $("input#pokemon-input");
   const $addPokemonBtn = $("button#add-pokemon");
   const $dataList = $("datalist#pokemon-list");
+  const $refreshBtn = $("button#refresh-btn");
 
   /**
    * Observables
@@ -105,25 +90,40 @@ $(document).ready(() => {
         $pokemonInput.val("");
         pokemonName = pokemonName[0].toUpperCase() + pokemonName.toLowerCase().substring(1);
         const index = topics.indexOf(pokemonName);
-        // We don't need update selectedPokemons array, it's just homework requirement
-        selectedPokemons.push(pokemonName);
-        //if pokemonName exists in topics array, add this name to selected pokemons and delete from topics array
-        if(index > -1) {
-          // We need to update topics array for auto completion feature
-          topics.splice(index, 1);
-        }
+        if(index < 0) alert("You just added unknown Pokemon.");
+
+      });
+
+
+  //Refresh Button Click stream
+  const refresh$ =
+    Observable
+      .fromEvent($refreshBtn, "click")
+      .do(() => $buttonsBox.empty()) //side effect: if user click refresh button, remove existing buttons
+      .startWith(null); // when app starts, simulate first click with null event value
+
+  //random 20 pokemon pick
+  const randomPickedPokemons$ =
+    Observable
+      .of(topics)
+      .switchMap((pokemons: Array<string>) => {
+        const randomIndex = topics.length - 20 > 0 ? Math.floor(Math.random() * (topics.length - 20)) : 0;
+        return Observable.from(pokemons.slice(randomIndex, randomIndex + 20)); // pick 20 random pokemon
       });
 
   //Pokemons stream
   const pokemons$ =
-    Observable.from(selectedPokemons)
-      .concat(addPokemonClick$);
+    refresh$
+      .switchMap(() =>
+        randomPickedPokemons$.concat(addPokemonClick$)
+      );
 
-  //Pokemon gif click stream
+
+  //Pokemon gif image click stream
   const pokemonGifClick$ =
     Observable
       .fromEventPattern((handler: Handler) => $images.on("click", ".pokemon-box", handler))
-      .map((ev: Event) => ({ // Due to rating ribbon, listen click event of parent div and find img element
+      .map((ev: Event) => ({ // Due to rating ribbon element user cant click left side of image. So we listen click event of parent div and find img element.
         isAnimating: $(ev.target).closest(".pokemon-box").find(".pokemon-gif").data("animating"),
         imgElem: $(ev.target).closest(".pokemon-box").find(".pokemon-gif")
       }));
@@ -175,7 +175,8 @@ $(document).ready(() => {
 
       //if there is no gif image found
       if(!gifs.length) {
-        $images.append($("<h2>").text("This Pokemon is one of the most UNPOPULAR Pokemons! No Gif image found!"))
+        $images.append($("<h2>").text("This Pokemon is one of the most UNPOPULAR Pokemons! No Gif image found!"));
+        return;
       }
 
 

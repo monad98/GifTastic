@@ -43,12 +43,16 @@
       <h1>Gif Tastic <small>pick a pokemon!</small></h1>
     </div>
     <div class="row">
-      <div id="buttons" class="col-md-6"></div>
+      <div class="col-md-6">
+        <div id="buttons"></div>
+        <button id="refresh-btn" class="btn btn-success"><i class="glyphicon glyphicon-refresh"></i> Refresh Pokemons</button>
+      </div>
       <div id="addForm" class="col-md-6">
         <form>
           <div class="form-group">
-            <label for="pokemon-input">Add a Pokemon (type more than 3 characters)</label>
+            <label for="pokemon-input">Add a Pokemon</label>
             <input type="text" class="form-control" id="pokemon-input" placeholder="charmander, pikachu, beedrill, ekans, poliwag..." list="pokemon-list">
+            <p>(auto completion works when more than 2 characters typed)</p>
             <datalist id="pokemon-list"></datalist>
           </div>
         </form>

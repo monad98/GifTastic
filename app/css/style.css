@@ -21,6 +21,14 @@
 	top: -2px;
 	left: -2px;
 }
+
+.error {
+	color: #d60000;
+	padding-left: 10px;
+}
+#refresh-btn {
+	margin-bottom: 10px;
+}
 /*source: https://codepen.io/eode9/pen/twkKm*/
 .ribbon{
 	width: 150px;
