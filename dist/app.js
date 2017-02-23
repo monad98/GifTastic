@@ -21,7 +21,7 @@ require("rxjs/add/operator/scan");
 require("rxjs/add/operator/share");
 $(document).ready(function () {
     var API_KEY = "dc6zaTOxFJmzC";
-    var URL = "http://api.giphy.com/v1/gifs/search?";
+    var URL = "https://api.giphy.com/v1/gifs/search?";
     var randomIndex = pokemon_1.default.length - 20 > 0 ? Math.floor(Math.random() * (pokemon_1.default.length - 20)) : 0;
     var selectedPokemons = pokemon_1.default.splice(randomIndex, 20);
     var $buttonsBox = $("#buttons");

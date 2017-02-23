@@ -36,7 +36,7 @@ interface Gif {
 
 $(document).ready(() => {
   const API_KEY = "dc6zaTOxFJmzC";
-  const URL = "http://api.giphy.com/v1/gifs/search?";
+  const URL = "https://api.giphy.com/v1/gifs/search?";
 
   const randomIndex = topics.length - 20 > 0 ? Math.floor(Math.random() * (topics.length - 20)) : 0;
   const selectedPokemons = topics.splice(randomIndex, 20); // select 20 random pokemons
